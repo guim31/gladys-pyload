@@ -1,0 +1,21 @@
+[
+  {
+    "fid": 5,
+    "name": "big.bin",
+    "speed": 1070028,
+    "eta": 224,
+    "format_eta": "00:03:44",
+    "bleft": 240447040,
+    "size": 314572800,
+    "format_size": "300.00 MiB",
+    "percent": 23,
+    "status": 12,
+    "statusmsg": "downloading",
+    "format_wait": "00:00:00",
+    "wait_until": 0.0,
+    "package_id": 5,
+    "package_name": "Big file",
+    "plugin": "DefaultPlugin",
+    "info": ""
+  }
+]

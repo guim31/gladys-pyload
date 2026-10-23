@@ -1,33 +1,62 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeConfig, DEFAULT_CONFIG } from '../src/config.js';
+import { DEFAULT_CONFIG, normalizeConfig, parseServerUrl } from '../src/config.js';
 
-test('normalizeConfig returns the defaults when called with no argument', () => {
-  assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
+test('server addresses: bare host gets port 8000, URL copied from the browser', () => {
+  assert.equal(parseServerUrl('192.0.2.10'), 'http://192.0.2.10:8000');
+  assert.equal(parseServerUrl(' nas.local:8001 '), 'http://nas.local:8001');
+  assert.equal(parseServerUrl('http://192.0.2.10:8000/dashboard'), 'http://192.0.2.10:8000');
+  assert.equal(parseServerUrl('https://dl.example.com/pyload/'), 'https://dl.example.com/pyload');
+  assert.equal(
+    parseServerUrl('https://dl.example.com/pyload/api'),
+    'https://dl.example.com/pyload',
+  );
+  assert.equal(parseServerUrl('http://192.0.2.10'), 'http://192.0.2.10', 'a scheme keeps port 80');
 });
 
-test('normalizeConfig keeps user values over the defaults', () => {
-  const config = normalizeConfig({ latitude: 45.5, longitude: -73.6, unit: 'fahrenheit' });
-  assert.equal(config.latitude, 45.5);
-  assert.equal(config.longitude, -73.6);
-  assert.equal(config.unit, 'fahrenheit');
+test('unusable addresses are refused, credentials in the address too', () => {
+  for (const raw of ['', '   ', 'ftp://192.0.2.10', 'http://', 'http://u:p@192.0.2.10:8000', 42]) {
+    assert.equal(parseServerUrl(raw), null, String(raw));
+  }
 });
 
-test('normalizeConfig coerces numeric strings coming from a form', () => {
-  const config = normalizeConfig({ latitude: '48.8', longitude: '2.3', poll_frequency: '600' });
-  assert.equal(config.latitude, 48.8);
-  assert.equal(config.longitude, 2.3);
-  assert.equal(config.poll_frequency, 600);
-  assert.equal(typeof config.poll_frequency, 'number');
+test('defaults: no server, 30 seconds, adding links off, French', () => {
+  const config = normalizeConfig(DEFAULT_CONFIG);
+  assert.deepEqual(config, {
+    servers: [],
+    invalidSlots: [],
+    allowSelfSigned: false,
+    allowAddLinks: false,
+    pollIntervalMs: 30_000,
+    language: 'fr',
+  });
+  assert.deepEqual(normalizeConfig(undefined).servers, []);
 });
 
-test('normalizeConfig falls back to the default for a missing numeric field', () => {
-  const config = normalizeConfig({ unit: 'celsius' });
-  assert.equal(config.poll_frequency, DEFAULT_CONFIG.poll_frequency);
-});
-
-test('GLADYS_PREFER_LOCAL defaults to true and only an explicit false disables it', () => {
-  assert.equal(normalizeConfig().GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: true }).GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: false }).GLADYS_PREFER_LOCAL, false);
+test('servers by slot, secrets kept as typed, bad values fall back to the defaults', () => {
+  const config = normalizeConfig({
+    server_1_url: 'bad url with spaces',
+    server_2_url: '192.0.2.20',
+    server_2_api_key: ' pl_key ',
+    server_2_username: ' admin ',
+    server_2_password: ' with spaces ',
+    server_2_name: 'x'.repeat(60),
+    poll_interval: '7',
+    language: 'it',
+    allow_add_links: 'true',
+  });
+  assert.deepEqual(config.invalidSlots, [1]);
+  assert.deepEqual(config.servers, [
+    {
+      slot: 2,
+      url: 'http://192.0.2.20:8000',
+      apiKey: 'pl_key',
+      username: 'admin',
+      password: ' with spaces ',
+      name: 'x'.repeat(40),
+    },
+  ]);
+  assert.equal(config.pollIntervalMs, 30_000);
+  assert.equal(config.language, 'fr');
+  assert.equal(config.allowAddLinks, true);
 });

@@ -1,0 +1,11 @@
+{
+  "pause": false,
+  "active": 1,
+  "queue": 4,
+  "total": 5,
+  "speed": 1070975,
+  "download": true,
+  "reconnect": false,
+  "captcha": false,
+  "proxy": false
+}

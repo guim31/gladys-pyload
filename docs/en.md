@@ -1,61 +1,146 @@
-# Demo Devices Template
+# pyLoad
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Follow and control [pyLoad](https://github.com/pyload/pyload) from Gladys: the free download
+manager for direct links and file hosts, often run on a NAS or a home server (Docker, Unraid,
+Synology…). The integration talks to the local API of pyLoad: the speed, the queue and the free
+space show on the dashboard, a scene can pause the downloads during a video call, and Gladys can
+tell you when a download is finished, when a file failed or when the queue is empty.
 
-## What you get
+Tested against real pyLoad 0.5.0b3.dev96 and dev101 installs, not yet in a real
+Gladys: feedback welcome on [GitHub](https://github.com/guim31/gladys-pyload/issues).
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+## Requirements
+
+- Gladys 5.1.0 or later.
+- pyLoad **0.5** (the `pyload-ng` package, or the `linuxserver/pyload-ng` Docker image), reachable
+  from the Gladys server (same network). The old pyLoad 0.4 is not supported.
+- pyLoad **0.5.0b3.dev101 or later** (2025): an **API key**. Create it in pyLoad: **Settings →
+  Users**, the menu of your user, **Manage API Keys**. It starts with `pl_`.
+- Older pyLoad 0.5 (before dev101): the **user name and password** of the web interface
+  (`pyload` / `pyload` until you change them).
+- The user needs the pyLoad permissions **List** (read the queue), **Status** (pause, free space)
+  and, for the scene actions, **Modify** (restart the failed files) and **Add** (add links). An
+  administrator has them all.
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+Up to two servers, each with:
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+- **Address**: the IP address or name, with the port: `192.168.1.10:8000`. Without port, 8000 is
+  added. Write `https://` for HTTPS, and the path if pyLoad sits behind a reverse proxy
+  (`https://nas.example.org/pyload`). The address copied from the browser works too.
+- **API key**, or **User name** and **Password** for the older versions.
+- **Name**: the name of the device in Gladys (empty: pyLoad followed by the address).
 
-## Actions
+Options:
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+- **Accept self-signed certificates**: for an `https://` address with a certificate of its own.
+  Tick it for your own servers only.
+- **Refresh interval**: how often pyLoad is read, 30 seconds by default. It is also the delay of
+  the triggers.
+- **Allow adding links**: lets the scenes add links to download (off by default: whoever can edit
+  a scene could then start a download).
+- **Language of the device texts**: the names given to the features when a device is added, and
+  the status texts (French by default).
 
-## Scenes
+The **Test the connection** button reads every server and says what it found: version, state,
+queue, failed files.
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+## Devices
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+One device per server, found in the Discovery tab. Its features:
 
-## Dashboard
+| Feature                | What it shows                                                                     |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| Downloads paused       | switch: on pauses pyLoad until you turn it off, off resumes it.                   |
+| Automatic reconnection | switch: the reconnection of pyLoad (new IP address from the router) on or off.    |
+| Download speed         | in MB/s.                                                                          |
+| Active downloads       | the files downloading now.                                                        |
+| Files in the queue     | the files of the queue not finished, failed ones included (pyLoad's "queue").     |
+| Files in total         | every file of pyLoad, queue and collector (pyLoad's "total").                     |
+| Failed files           | the files that failed, or whose link is offline.                                  |
+| Free disk space        | in GB, of the download folder.                                                    |
+| Status                 | Downloading, Paused, Waiting (files queued, none downloading), Idle, Unreachable. |
+| Last download          | the name of the last package completed.                                           |
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+Pausing pyLoad starts no new download: the files already downloading finish (it is pyLoad's own
+pause). Sizes and speeds are binary units, like pyLoad shows them (1 MB = 1024 × 1024 bytes). Only
+the changes are sent to Gladys, and every value again after 6 hours.
+
+## Widget
+
+The **pyLoad downloads** widget shows the speed, the queue and the time left of every server (or
+of the one chosen in its settings), and one line per server: its state (with the end of a timed
+pause), the files downloading with their percentage, the failed files, the free space and the last
+download. Four buttons:
+
+- **Pause**: pauses pyLoad until you resume it;
+- **Pause 30 min**: pauses it for 30 minutes;
+- **Resume**: resumes it;
+- **Retry failed**: tries the failed files again.
+
+The check mark shows the current state: on **Pause** when everything is paused, on **Resume**
+when everything runs.
+
+## Scene triggers
+
+- **Download completed**: every file of a package is downloaded. Filter: the server. Variables: package name, number of files, size in MB, server name.
+- **File failed**: a file failed to download, or its link is offline (dead link, 404). Filter: the
+  server. Variables: file name, package name, the reason given by pyLoad, server name.
+- **Queue empty**: nothing is left to download, the last file of the queue finished or failed.
+  Filter: the server. Variable: server name.
+
+Each package and each file fires once (a file restarted that fails again fires again). What
+happened while the integration was stopped (an update, a restart) fires when it starts again.
+
+There is no "low disk space" trigger: the **Free disk space** feature is a value, and the device
+trigger of Gladys already compares it with a threshold ("Free disk space below 20 GB").
+
+## Scene actions
+
+- **Pause downloads**: one server or all of them, for a number of minutes (0: until resumed). The
+  integration resumes pyLoad at the end (pyLoad has no timed pause of its own). Outputs: number of
+  servers paused, duration.
+- **Resume downloads**: one server or all of them.
+- **Restart failed files**: tries the failed files again, on one server or all of them.
+- **Add links to download**: http(s) or ftp links, separated by spaces (50 at most), as one
+  package, on the chosen server (empty: the first one). The package name is optional (empty: the
+  name of the first file). Only when **Allow adding links** is ticked. Output: the package id.
+
+The integration never deletes a file or a package, and never restarts pyLoad.
+
+## Scene examples
+
+- Video call: when the calendar event "Meeting" starts, **Pause downloads** for 60 minutes.
+- Night: at 1 am, **Resume downloads**; at 8 am, **Pause downloads** until resumed.
+- Notification: on **Download completed**, send "{{triggerEvent.data.name}} is downloaded" to
+  your phone.
+- Problem: on **File failed**, send the file name and the reason; then **Restart failed files**
+  after an hour.
+- Energy: on **Queue empty**, turn off the NAS plug a few minutes later.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- "does not answer": check the address and the port (8000), and that the Gladys server can reach
+  pyLoad (firewall, Docker network).
+- "login refused": pyLoad 0.5.0b3.dev101 and later only accept an API key; the older versions a
+  user name and password. Correct, then save. The integration does not try again on its own: each
+  refused login writes an error in the pyLoad log.
+- "the pyLoad user lacks a permission": give the user the permissions listed in Requirements.
+- "no pyLoad 0.5 at this address": wrong port, or a pyLoad 0.4.
+- "certificate refused": tick "Accept self-signed certificates", or use `http://`.
+- "too many requests": pyLoad answers 100 API calls a minute per address at most; a refresh costs
+  3 or 4. Choose a longer refresh interval if other tools read pyLoad too.
+- A link added by a scene that fails at once with "Refusing to download from Server-Side host":
+  pyLoad refuses the addresses of your own network (a protection of pyLoad).
+- More details: the integration logs, with `LOG_LEVEL=debug` for every reading.
+
+## Limits
+
+- Each refresh reads the whole queue of pyLoad (every file): every 30 seconds by default.
+- The pause of pyLoad lets the files already downloading finish.
+- The **Automatic reconnection** switch shows the option of pyLoad within its time window: outside
+  the window set in pyLoad, it reads off.
+- A timed pause relies on the integration: if it is stopped at the end of the pause, pyLoad is
+  resumed as soon as it starts again.
+- Not affiliated with the pyLoad team.

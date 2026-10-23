@@ -31,16 +31,22 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only: src/app.js registers the handlers before connect()
+src/app.js                        every SDK handler -> the hub (also used by the tests)
+src/hub.js                        servers, reading timer, states, scene events, timed pause, commands, quiet logs
+src/devices.js                    one device per configured server: features, names (4 languages), states
+src/clients/pyload.js             pyLoad 0.5 API client (X-API-Key or basic auth; GET to read, POST to act)
+src/clients/model.js              the snapshot of a reading, pyLoad file statuses (done, failed, pending)
+src/clients/errors.js             error kinds; src/clients/http.js: node:http(s) request (self-signed on request)
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    dashboard widget `pyload` (manifest `widgets`)
+src/texts.js                      connection, error, status, report and action texts (4 languages)
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
+src/store.js                      /data/pyload-state.json (what the triggers announced, end of a timed pause)
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (en and fr mandatory)
 test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+                                  and helpers/fakePyload.js (built from the real answers in test/fixtures)
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,10 +76,54 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** is in four languages (English, French, German with
+  "du", Spanish with "usted"): action messages, manifest texts, widget texts,
+  feature names, and `docs/{en,fr,de,es}.md` with the same sections.
+  `test/i18n.test.js` checks them.
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
+
+## This integration: pyLoad
+
+- **API**: pyload-ng 0.5, `/api/<method>` with snake_case names (camelCase legacy aliases exist),
+  JSON bodies, `GET` for the readers and `POST` for the commands (the wrong method is a 405).
+  Checked on `lscr.io/linuxserver/pyload-ng` 0.5.0b3.dev101 and 0.5.0b3.dev96 (23/10/2026). The
+  old 0.4 API (Thrift, `/api/login`) is not supported: dev101 answers 404 "Obsolete API" there.
+- **Device identity** = the configuration slot (`server`, `1`/`2`): pyLoad has no instance id.
+  Feature keys in `FEATURE_KEYS` (src/devices.js), trigger keys in `TRIGGERS` (src/hub.js),
+  widget button keys in `ACTIONS` (src/widgets.js): all permanent.
+- **States only for the added devices** (`gladys.devices`), through `publishChangedStates` with a
+  6 h heartbeat; `onDeviceCreated` forces them and refreshes the widget.
+
+Pitfalls found on the real software (23/10/2026):
+
+- **Authentication changed in 0.5.0b3.dev101**: only the `X-API-Key` header (`pl_…`, created in
+  Settings → Users → Manage API Keys, or `POST /json/generate_apikey` from a web session); basic
+  auth is ignored there ("Invalid API credentials"). dev96 and before: basic auth only, the header
+  is ignored. The client sends both when both are configured.
+- Every refused login writes an ERROR line in the pyLoad log: never retried on the timer.
+- **Rate limit**: 100 calls a minute per client address on `/api/*` (429 beyond). A reading costs
+  3 calls, 4 while something downloads.
+- Unknown method: 404 `{"error":"Not Found"}` on dev101, 403 `{"error":"Forbidden"}` on dev96.
+  Missing permission: 401 "Access denied" (dev101) or "Unauthorized - Insufficient permissions"
+  (dev96). Pages of the web interface: 302 to `/login`. `Server: pyLoad/0.5.0` header.
+- `pause_server` starts no new download and lets the files in progress finish ("nothing gets
+  aborted"): `status_server` then reads `pause: true` with `active: 1` and a speed. No timed pause
+  in pyLoad: the hub keeps the end in `/data` and resumes.
+- `status_server.queue` counts every file not finished, **failed ones included**: "queue empty" is
+  computed from the file statuses (`PENDING` in src/clients/model.js), not from it.
+  `status_server.reconnect` is "option on AND within its time window"; `toggle_reconnect` flips
+  the option and returns it.
+- File statuses: 0 finished, 1 offline (a 404 link), 4 skipped, 8 failed, 9 aborted (by the user,
+  not a failure), 12 downloading… (`FILE_STATUS`). `restart_failed` retries the failed ones; an
+  offline link stays offline.
+- **pyLoad refuses private addresses** ("Refusing to download from Server-Side host"), and it is
+  not configurable: a local test file server must sit on a Docker network with a public-range
+  subnet (the session used 11.200.0.0/24, local to the bridge).
+- `get_queue_data` returns every package with every link (no paging): bound the body size.
+- A reading can take seconds (the whole queue): a command bumps `record.epoch` before and after
+  it is sent, and a reading started earlier is dropped (`read` in src/hub.js). Without it, a
+  reading answering "not paused" just after "Pause 30 min" cancelled the end of the pause.
 
 ---
 

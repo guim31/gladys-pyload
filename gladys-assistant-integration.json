@@ -1,177 +1,940 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "pyLoad",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Follow and control pyLoad: speed, queue, free space, pause, failed files, new links.",
+    "fr": "Suivez et pilotez pyLoad : vitesse, file, place libre, pause, fichiers en échec, liens.",
+    "de": "Verfolge und steuere pyLoad: Tempo, Warteschlange, Speicher, Pause, Fehler, neue Links.",
+    "es": "Siga y controle pyLoad: velocidad, cola, espacio libre, pausa, archivos fallidos, enlaces."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-pyload:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-pyload/main/cover.png",
+  "categories": ["network", "multimedia"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your pyLoad",
+        "fr": "Votre pyLoad",
+        "de": "Dein pyLoad",
+        "es": "Su pyLoad"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "pyLoad (pyload-ng 0.5) on your network: an API key, or a user name and password for the versions before 0.5.0b3.dev101. Up to two servers. Never deletes a file.",
+        "fr": "pyLoad (pyload-ng 0.5) sur votre réseau : une clé d'API, ou un nom d'utilisateur et un mot de passe pour les versions antérieures à 0.5.0b3.dev101. Jusqu'à deux serveurs. Ne supprime jamais de fichier.",
+        "de": "pyLoad (pyload-ng 0.5) in deinem Netzwerk: ein API-Schlüssel, oder Benutzername und Passwort für Versionen vor 0.5.0b3.dev101. Bis zu zwei Server. Löscht nie eine Datei.",
+        "es": "pyLoad (pyload-ng 0.5) en su red: una clave de API, o un nombre de usuario y una contraseña para las versiones anteriores a 0.5.0b3.dev101. Hasta dos servidores. Nunca borra un archivo."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/pyload/pyload",
+          "label": {
+            "en": "pyLoad on GitHub",
+            "fr": "pyLoad sur GitHub",
+            "de": "pyLoad auf GitHub",
+            "es": "pyLoad en GitHub"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "server_1_url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
+      "description": {
+        "en": "IP address or name, with :port (8000 by default). https:// for HTTPS.",
+        "fr": "Adresse IP ou nom, avec :port (8000 par défaut). https:// pour le HTTPS.",
+        "de": "IP-Adresse oder Name, mit :Port (standardmäßig 8000). https:// für HTTPS.",
+        "es": "Dirección IP o nombre, con :puerto (8000 por defecto). https:// para HTTPS."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.10:8000",
+        "fr": "ex. 192.168.1.10:8000",
+        "de": "z. B. 192.168.1.10:8000",
+        "es": "p. ej. 192.168.1.10:8000"
+      },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "default": ""
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "server_1_api_key",
+      "type": "secret",
+      "label": {
+        "en": "API key",
+        "fr": "Clé d'API",
+        "de": "API-Schlüssel",
+        "es": "Clave de API"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "pyLoad 0.5.0b3.dev101 or later: Settings, Users, Manage API Keys (pl_…).",
+        "fr": "pyLoad 0.5.0b3.dev101 ou plus récent : Settings, Users, Manage API Keys (pl_…).",
+        "de": "pyLoad 0.5.0b3.dev101 oder neuer: Settings, Users, Manage API Keys (pl_…).",
+        "es": "pyLoad 0.5.0b3.dev101 o posterior: Settings, Users, Manage API Keys (pl_…)."
+      },
+      "required": false
     },
     {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
+      "key": "server_1_username",
+      "type": "string",
+      "label": {
+        "en": "User name",
+        "fr": "Nom d'utilisateur",
+        "de": "Benutzername",
+        "es": "Nombre de usuario"
+      },
+      "description": {
+        "en": "Older pyLoad (before dev101), without API key: the login of the web interface.",
+        "fr": "pyLoad plus ancien (avant dev101), sans clé d'API : l'identifiant de l'interface web.",
+        "de": "Älteres pyLoad (vor dev101), ohne API-Schlüssel: die Anmeldung der Weboberfläche.",
+        "es": "pyLoad más antiguo (antes de dev101), sin clave de API: el usuario de la interfaz web."
+      },
       "required": false,
-      "default": "celsius",
+      "default": ""
+    },
+    {
+      "key": "server_1_password",
+      "type": "secret",
+      "label": {
+        "en": "Password",
+        "fr": "Mot de passe",
+        "de": "Passwort",
+        "es": "Contraseña"
+      },
+      "description": {
+        "en": "With the user name only.",
+        "fr": "Avec le nom d'utilisateur seulement.",
+        "de": "Nur mit dem Benutzernamen.",
+        "es": "Solo con el nombre de usuario."
+      },
+      "required": false
+    },
+    {
+      "key": "server_1_name",
+      "type": "string",
+      "label": {
+        "en": "Name",
+        "fr": "Nom",
+        "de": "Name",
+        "es": "Nombre"
+      },
+      "description": {
+        "en": "Name of the device in Gladys. Empty: pyLoad followed by the address.",
+        "fr": "Nom de l'appareil dans Gladys. Vide : pyLoad suivi de l'adresse.",
+        "de": "Name des Geräts in Gladys. Leer: pyLoad gefolgt von der Adresse.",
+        "es": "Nombre del dispositivo en Gladys. Vacío: pyLoad seguido de la dirección."
+      },
+      "placeholder": {
+        "en": "e.g. NAS downloads",
+        "fr": "ex. Téléchargements NAS",
+        "de": "z. B. NAS-Downloads",
+        "es": "p. ej. Descargas NAS"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "server_2",
+      "type": "section",
+      "label": {
+        "en": "Second server (optional)",
+        "fr": "Deuxième serveur (facultatif)",
+        "de": "Zweiter Server (optional)",
+        "es": "Segundo servidor (opcional)"
+      },
+      "description": {
+        "en": "Same fields, for another pyLoad.",
+        "fr": "Les mêmes champs, pour un autre pyLoad.",
+        "de": "Dieselben Felder, für ein weiteres pyLoad.",
+        "es": "Los mismos campos, para otro pyLoad."
+      }
+    },
+    {
+      "key": "server_2_url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
+      },
+      "description": {
+        "en": "IP address or name, with :port (8000 by default). https:// for HTTPS.",
+        "fr": "Adresse IP ou nom, avec :port (8000 par défaut). https:// pour le HTTPS.",
+        "de": "IP-Adresse oder Name, mit :Port (standardmäßig 8000). https:// für HTTPS.",
+        "es": "Dirección IP o nombre, con :puerto (8000 por defecto). https:// para HTTPS."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.10:8000",
+        "fr": "ex. 192.168.1.10:8000",
+        "de": "z. B. 192.168.1.10:8000",
+        "es": "p. ej. 192.168.1.10:8000"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "server_2_api_key",
+      "type": "secret",
+      "label": {
+        "en": "API key",
+        "fr": "Clé d'API",
+        "de": "API-Schlüssel",
+        "es": "Clave de API"
+      },
+      "description": {
+        "en": "pyLoad 0.5.0b3.dev101 or later: Settings, Users, Manage API Keys (pl_…).",
+        "fr": "pyLoad 0.5.0b3.dev101 ou plus récent : Settings, Users, Manage API Keys (pl_…).",
+        "de": "pyLoad 0.5.0b3.dev101 oder neuer: Settings, Users, Manage API Keys (pl_…).",
+        "es": "pyLoad 0.5.0b3.dev101 o posterior: Settings, Users, Manage API Keys (pl_…)."
+      },
+      "required": false
+    },
+    {
+      "key": "server_2_username",
+      "type": "string",
+      "label": {
+        "en": "User name",
+        "fr": "Nom d'utilisateur",
+        "de": "Benutzername",
+        "es": "Nombre de usuario"
+      },
+      "description": {
+        "en": "Older pyLoad (before dev101), without API key: the login of the web interface.",
+        "fr": "pyLoad plus ancien (avant dev101), sans clé d'API : l'identifiant de l'interface web.",
+        "de": "Älteres pyLoad (vor dev101), ohne API-Schlüssel: die Anmeldung der Weboberfläche.",
+        "es": "pyLoad más antiguo (antes de dev101), sin clave de API: el usuario de la interfaz web."
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "server_2_password",
+      "type": "secret",
+      "label": {
+        "en": "Password",
+        "fr": "Mot de passe",
+        "de": "Passwort",
+        "es": "Contraseña"
+      },
+      "description": {
+        "en": "With the user name only.",
+        "fr": "Avec le nom d'utilisateur seulement.",
+        "de": "Nur mit dem Benutzernamen.",
+        "es": "Solo con el nombre de usuario."
+      },
+      "required": false
+    },
+    {
+      "key": "server_2_name",
+      "type": "string",
+      "label": {
+        "en": "Name",
+        "fr": "Nom",
+        "de": "Name",
+        "es": "Nombre"
+      },
+      "description": {
+        "en": "Name of the device in Gladys. Empty: pyLoad followed by the address.",
+        "fr": "Nom de l'appareil dans Gladys. Vide : pyLoad suivi de l'adresse.",
+        "de": "Name des Geräts in Gladys. Leer: pyLoad gefolgt von der Adresse.",
+        "es": "Nombre del dispositivo en Gladys. Vacío: pyLoad seguido de la dirección."
+      },
+      "placeholder": {
+        "en": "e.g. NAS downloads",
+        "fr": "ex. Téléchargements NAS",
+        "de": "z. B. NAS-Downloads",
+        "es": "p. ej. Descargas NAS"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "options",
+      "type": "section",
+      "label": {
+        "en": "Options",
+        "fr": "Options",
+        "de": "Optionen",
+        "es": "Opciones"
+      }
+    },
+    {
+      "key": "allow_self_signed",
+      "type": "boolean",
+      "label": {
+        "en": "Accept self-signed certificates",
+        "fr": "Accepter les certificats auto-signés",
+        "de": "Selbstsignierte Zertifikate akzeptieren",
+        "es": "Aceptar certificados autofirmados"
+      },
+      "description": {
+        "en": "For a pyLoad served in HTTPS with its own certificate (common on a NAS).",
+        "fr": "Pour un pyLoad servi en HTTPS avec son propre certificat (fréquent sur un NAS).",
+        "de": "Für ein pyLoad, das über HTTPS mit eigenem Zertifikat läuft (häufig auf einem NAS).",
+        "es": "Para un pyLoad servido en HTTPS con su propio certificado (frecuente en un NAS)."
+      },
+      "required": false,
+      "default": false
+    },
+    {
+      "key": "poll_interval",
+      "type": "select",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
+      },
+      "description": {
+        "en": "How often pyLoad is read: also the delay of the triggers.",
+        "fr": "Fréquence de lecture de pyLoad : c'est aussi le délai des déclencheurs.",
+        "de": "Wie oft pyLoad gelesen wird: auch die Verzögerung der Auslöser.",
+        "es": "Con qué frecuencia se lee pyLoad: también el retraso de los disparadores."
+      },
+      "required": false,
+      "default": "30",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "10",
+          "label": {
+            "en": "10 seconds",
+            "fr": "10 secondes",
+            "de": "10 Sekunden",
+            "es": "10 segundos"
+          }
+        },
+        {
+          "value": "30",
+          "label": {
+            "en": "30 seconds",
+            "fr": "30 secondes",
+            "de": "30 Sekunden",
+            "es": "30 segundos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "1 minute",
+            "fr": "1 minute",
+            "de": "1 Minute",
+            "es": "1 minuto"
+          }
+        },
+        {
+          "value": "120",
+          "label": {
+            "en": "2 minutes",
+            "fr": "2 minutes",
+            "de": "2 Minuten",
+            "es": "2 minutos"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "key": "allow_add_links",
+      "type": "boolean",
+      "label": {
+        "en": "Allow adding links",
+        "fr": "Autoriser l'ajout de liens",
+        "de": "Links hinzufügen erlauben",
+        "es": "Permitir añadir enlaces"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Lets the scenes add links to download. Off by default: whoever can edit a scene could then start a download.",
+        "fr": "Permet aux scènes d'ajouter des liens à télécharger. Désactivé par défaut : quiconque peut modifier une scène pourrait lancer un téléchargement.",
+        "de": "Erlaubt Szenen, Links zum Herunterladen hinzuzufügen. Standardmäßig aus: Wer eine Szene bearbeiten kann, könnte sonst einen Download starten.",
+        "es": "Permite que las escenas añadan enlaces para descargar. Desactivado por defecto: quien pueda editar una escena podría iniciar una descarga."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": false
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms de fonctionnalités",
+        "de": "Sprache der Funktionsnamen",
+        "es": "Idioma de los nombres de funciones"
+      },
+      "description": {
+        "en": "Names given to the features when a device is added, and the status texts.",
+        "fr": "Noms donnés aux fonctionnalités à l'ajout d'un appareil, et textes d'état.",
+        "de": "Namen der Funktionen beim Hinzufügen eines Geräts und die Statustexte.",
+        "es": "Nombres de las funciones al añadir un dispositivo y textos de estado."
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "description": {
+        "en": "Reads every server now and reports what it finds.",
+        "fr": "Lit chaque serveur maintenant et indique ce qu’il trouve.",
+        "de": "Liest jetzt jeden Server und meldet, was er findet.",
+        "es": "Lee ahora cada servidor e indica lo que encuentra."
+      },
       "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "download_completed",
+      "label": {
+        "en": "Download completed",
+        "fr": "Téléchargement terminé",
+        "de": "Download abgeschlossen",
+        "es": "Descarga completada"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "Every file of a package is downloaded. Once per package.",
+        "fr": "Tous les fichiers d'un paquet sont téléchargés. Une fois par paquet.",
+        "de": "Alle Dateien eines Pakets sind heruntergeladen. Einmal pro Paket.",
+        "es": "Todos los archivos de un paquete están descargados. Una vez por paquete."
       },
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: any server.",
+            "fr": "Vide : n'importe quel serveur.",
+            "de": "Leer: jeder Server.",
+            "es": "Vacío: cualquier servidor."
+          }
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "name",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Package name",
+            "fr": "Nom du paquet",
+            "de": "Name des Pakets",
+            "es": "Nombre del paquete"
+          }
+        },
+        {
+          "key": "server",
+          "type": "string",
+          "label": {
+            "en": "Server name",
+            "fr": "Nom du serveur",
+            "de": "Name des Servers",
+            "es": "Nombre del servidor"
+          }
+        },
+        {
+          "key": "files",
+          "type": "number",
+          "label": {
+            "en": "Files",
+            "fr": "Fichiers",
+            "de": "Dateien",
+            "es": "Archivos"
+          }
+        },
+        {
+          "key": "size_mb",
+          "type": "number",
+          "label": {
+            "en": "Size (MB)",
+            "fr": "Taille (Mo)",
+            "de": "Größe (MB)",
+            "es": "Tamaño (MB)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "file_failed",
+      "label": {
+        "en": "File failed",
+        "fr": "Fichier en échec",
+        "de": "Datei fehlgeschlagen",
+        "es": "Archivo fallido"
+      },
+      "description": {
+        "en": "A file failed to download, or its link is offline (dead link, 404). Once per file.",
+        "fr": "Un fichier a échoué, ou son lien est hors ligne (lien mort, 404). Une fois par fichier.",
+        "de": "Eine Datei ist fehlgeschlagen oder ihr Link ist offline (toter Link, 404). Einmal pro Datei.",
+        "es": "Un archivo ha fallado, o su enlace está fuera de línea (enlace roto, 404). Una vez por archivo."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: any server.",
+            "fr": "Vide : n'importe quel serveur.",
+            "de": "Leer: jeder Server.",
+            "es": "Vacío: cualquier servidor."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "name",
+          "type": "string",
+          "label": {
+            "en": "File name",
+            "fr": "Nom du fichier",
+            "de": "Dateiname",
+            "es": "Nombre del archivo"
+          }
+        },
+        {
+          "key": "package",
+          "type": "string",
+          "label": {
+            "en": "Package name",
+            "fr": "Nom du paquet",
+            "de": "Name des Pakets",
+            "es": "Nombre del paquete"
+          }
+        },
+        {
+          "key": "reason",
+          "type": "string",
+          "label": {
+            "en": "Reason",
+            "fr": "Raison",
+            "de": "Grund",
+            "es": "Motivo"
+          }
+        },
+        {
+          "key": "server",
+          "type": "string",
+          "label": {
+            "en": "Server name",
+            "fr": "Nom du serveur",
+            "de": "Name des Servers",
+            "es": "Nombre del servidor"
+          }
+        }
+      ]
+    },
+    {
+      "key": "queue_empty",
+      "label": {
+        "en": "Queue empty",
+        "fr": "File d'attente vide",
+        "de": "Warteschlange leer",
+        "es": "Cola vacía"
+      },
+      "description": {
+        "en": "Nothing is left to download: the last file of the queue finished or failed.",
+        "fr": "Plus rien à télécharger : le dernier fichier de la file s'est terminé ou a échoué.",
+        "de": "Nichts mehr herunterzuladen: Die letzte Datei der Warteschlange ist fertig oder fehlgeschlagen.",
+        "es": "No queda nada por descargar: el último archivo de la cola ha terminado o ha fallado."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: any server.",
+            "fr": "Vide : n'importe quel serveur.",
+            "de": "Leer: jeder Server.",
+            "es": "Vacío: cualquier servidor."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "server",
+          "type": "string",
+          "label": {
+            "en": "Server name",
+            "fr": "Nom du serveur",
+            "de": "Name des Servers",
+            "es": "Nombre del servidor"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "pause_downloads",
+      "label": {
+        "en": "Pause downloads",
+        "fr": "Mettre les téléchargements en pause",
+        "de": "Downloads pausieren",
+        "es": "Pausar las descargas"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Pause one server or all, for a number of minutes or until resumed. Files in progress finish.",
+        "fr": "Met en pause un serveur ou tous, pour un nombre de minutes ou jusqu’à la reprise. Les fichiers en cours se terminent.",
+        "de": "Pausiert einen oder alle Server, für einige Minuten oder bis zum Fortsetzen. Laufende Dateien werden fertig.",
+        "es": "Pausa un servidor o todos, durante unos minutos o hasta reanudar. Los archivos en curso terminan."
+      },
+      "timeout_seconds": 20,
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: every server.",
+            "fr": "Vide : tous les serveurs.",
+            "de": "Leer: alle Server.",
+            "es": "Vacío: todos los servidores."
+          }
+        },
+        {
+          "key": "minutes",
+          "type": "number",
+          "label": {
+            "en": "Duration in minutes (0: until resumed)",
+            "fr": "Durée en minutes (0 : jusqu’à la reprise)",
+            "de": "Dauer in Minuten (0: bis zum Fortsetzen)",
+            "es": "Duración en minutos (0: hasta reanudar)"
+          },
+          "required": false,
+          "default": 0,
+          "min": 0,
+          "max": 10080
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "key": "servers",
+          "type": "number",
+          "label": {
+            "en": "Servers paused",
+            "fr": "Serveurs mis en pause",
+            "de": "Pausierte Server",
+            "es": "Servidores en pausa"
+          }
+        },
+        {
+          "key": "minutes",
+          "type": "number",
+          "label": {
+            "en": "Duration in minutes",
+            "fr": "Durée en minutes",
+            "de": "Dauer in Minuten",
+            "es": "Duración en minutos"
+          }
+        }
+      ]
+    },
+    {
+      "key": "resume_downloads",
+      "label": {
+        "en": "Resume downloads",
+        "fr": "Reprendre les téléchargements",
+        "de": "Downloads fortsetzen",
+        "es": "Reanudar las descargas"
+      },
+      "description": {
+        "en": "Resume the downloads of one server or all of them.",
+        "fr": "Reprend les téléchargements d’un serveur ou de tous.",
+        "de": "Setzt die Downloads eines oder aller Server fort.",
+        "es": "Reanuda las descargas de un servidor o de todos."
+      },
+      "timeout_seconds": 20,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: every server.",
+            "fr": "Vide : tous les serveurs.",
+            "de": "Leer: alle Server.",
+            "es": "Vacío: todos los servidores."
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "key": "servers",
+          "type": "number",
+          "label": {
+            "en": "Servers that accepted",
+            "fr": "Serveurs qui ont accepté",
+            "de": "Server, die angenommen haben",
+            "es": "Servidores que han aceptado"
+          }
+        }
+      ]
+    },
+    {
+      "key": "restart_failed",
+      "label": {
+        "en": "Restart failed files",
+        "fr": "Relancer les fichiers en échec",
+        "de": "Fehlgeschlagene Dateien neu starten",
+        "es": "Reiniciar los archivos fallidos"
+      },
+      "description": {
+        "en": "Try the failed files again, on one server or all of them.",
+        "fr": "Retente les fichiers en échec, sur un serveur ou sur tous.",
+        "de": "Versucht die fehlgeschlagenen Dateien erneut, auf einem oder allen Servern.",
+        "es": "Vuelve a intentar los archivos fallidos, en un servidor o en todos."
+      },
+      "timeout_seconds": 20,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: every server.",
+            "fr": "Vide : tous les serveurs.",
+            "de": "Leer: alle Server.",
+            "es": "Vacío: todos los servidores."
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "key": "servers",
+          "type": "number",
+          "label": {
+            "en": "Servers that accepted",
+            "fr": "Serveurs qui ont accepté",
+            "de": "Server, die angenommen haben",
+            "es": "Servidores que han aceptado"
+          }
+        }
+      ]
+    },
+    {
+      "key": "add_links",
+      "label": {
+        "en": "Add links to download",
+        "fr": "Ajouter des liens à télécharger",
+        "de": "Links zum Herunterladen hinzufügen",
+        "es": "Añadir enlaces para descargar"
+      },
+      "description": {
+        "en": "Adds links as one package to the queue. Only if allowed in the configuration (off by default).",
+        "fr": "Ajoute des liens en un paquet dans la file. Seulement si la configuration l'autorise (désactivé par défaut).",
+        "de": "Fügt Links als ein Paket zur Warteschlange hinzu. Nur wenn in der Konfiguration erlaubt (standardmäßig aus).",
+        "es": "Añade enlaces como un paquete a la cola. Solo si la configuración lo permite (desactivado por defecto)."
+      },
+      "timeout_seconds": 20,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: the first server of the configuration.",
+            "fr": "Vide : le premier serveur de la configuration.",
+            "de": "Leer: der erste Server der Konfiguration.",
+            "es": "Vacío: el primer servidor de la configuración."
+          }
+        },
+        {
+          "key": "links",
+          "type": "string",
+          "label": {
+            "en": "Links",
+            "fr": "Liens",
+            "de": "Links",
+            "es": "Enlaces"
+          },
+          "description": {
+            "en": "http(s) or ftp links, separated by spaces. 50 at most.",
+            "fr": "Liens http(s) ou ftp, séparés par des espaces. 50 au plus.",
+            "de": "http(s)- oder FTP-Links, durch Leerzeichen getrennt. Höchstens 50.",
+            "es": "Enlaces http(s) o ftp, separados por espacios. 50 como máximo."
+          },
+          "placeholder": {
+            "en": "https://…",
+            "fr": "https://…",
+            "de": "https://…",
+            "es": "https://…"
+          },
+          "required": true
+        },
+        {
+          "key": "package",
+          "type": "string",
+          "label": {
+            "en": "Package name (optional)",
+            "fr": "Nom du paquet (facultatif)",
+            "de": "Paketname (optional)",
+            "es": "Nombre del paquete (opcional)"
+          },
+          "description": {
+            "en": "Empty: the name of the first file.",
+            "fr": "Vide : le nom du premier fichier.",
+            "de": "Leer: der Name der ersten Datei.",
+            "es": "Vacío: el nombre del primer archivo."
+          },
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "package_id",
+          "type": "number",
+          "label": {
+            "en": "Package id",
+            "fr": "Numéro du paquet",
+            "de": "Paket-ID",
+            "es": "ID del paquete"
+          }
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "pyload",
+      "label": {
+        "en": "pyLoad downloads",
+        "fr": "Téléchargements pyLoad",
+        "de": "pyLoad-Downloads",
+        "es": "Descargas pyLoad"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "Speed, queue, files in progress and failures, with pause, resume and retry buttons.",
+        "fr": "Vitesse, file, fichiers en cours et échecs, avec boutons pause, reprise et relance.",
+        "de": "Tempo, Warteschlange, laufende Dateien und Fehler, mit Tasten für Pause, Fortsetzen und Neustart.",
+        "es": "Velocidad, cola, archivos en curso y fallos, con botones de pausa, reanudar y reintentar."
+      },
+      "icon": "download",
+      "action_timeout_seconds": 20,
+      "settings": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "pyLoad server",
+            "fr": "Serveur pyLoad",
+            "de": "pyLoad-Server",
+            "es": "Servidor pyLoad"
+          },
+          "description": {
+            "en": "Empty: every server.",
+            "fr": "Vide : tous les serveurs.",
+            "de": "Leer: alle Server.",
+            "es": "Vacío: todos los servidores."
+          },
+          "required": false
+        }
+      ]
     }
   ]
 }
