@@ -121,6 +121,9 @@ Pitfalls found on the real software (23/10/2026):
   not configurable: a local test file server must sit on a Docker network with a public-range
   subnet (the session used 11.200.0.0/24, local to the bridge).
 - `get_queue_data` returns every package with every link (no paging): bound the body size.
+- A reading can take seconds (the whole queue): a command bumps `record.epoch` before and after
+  it is sent, and a reading started earlier is dropped (`read` in src/hub.js). Without it, a
+  reading answering "not paused" just after "Pause 30 min" cancelled the end of the pause.
 
 ---
 

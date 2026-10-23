@@ -71,8 +71,10 @@ export const HUB_TIMINGS = {
 // Longest pause accepted from a scene or the widget: one week.
 export const MAX_PAUSE_MINUTES = 10_080;
 // Packages and failed files remembered per server: the queue of pyLoad itself
-// bounds them; this only caps a huge queue.
-const MAX_SEEN = 5000;
+// bounds them (a package deleted from pyLoad is forgotten).
+// The SDK refuses a scene event text over 1000 characters.
+const MAX_EVENT_TEXT = 500;
+const eventText = (text) => String(text ?? '').slice(0, MAX_EVENT_TEXT);
 const MAX_TRANSPORTS_PER_REQUEST = 100;
 // Links added by one scene action.
 export const MAX_LINKS = 50;
@@ -86,6 +88,16 @@ const CONNECTION_KINDS = new Set([
   ERROR_KINDS.REDIRECT,
   ERROR_KINDS.HTTP,
 ]);
+// A blip (one failed reading of a network error) is not shown as an outage:
+// the server is failing once down (two readings), or at once for an error
+// the user must fix (credentials, address, permission).
+const TRANSIENT_KINDS = new Set([
+  ERROR_KINDS.UNREACHABLE,
+  ERROR_KINDS.RATE_LIMIT,
+  ERROR_KINDS.HTTP,
+]);
+const failing = (record) =>
+  record.error !== null && (record.down || !TRANSIENT_KINDS.has(record.error.kind));
 const LINK_SCHEMES = new Set(['http:', 'https:', 'ftp:', 'ftps:']);
 
 /**
@@ -268,6 +280,7 @@ export class PyloadHub {
       polling: null,
       retryTimer: null,
       pauseTimer: null,
+      epoch: 0,
       dropped: false,
     };
   }
@@ -368,6 +381,10 @@ export class PyloadHub {
   }
 
   async read(record) {
+    // A command sent while this reading was in flight makes its answer stale
+    // (a pause just sent would read as "not paused" and cancel its own end):
+    // drop it, the command reads the server again once done.
+    const epoch = record.epoch;
     let snapshot;
     try {
       snapshot = await record.api.read();
@@ -376,6 +393,9 @@ export class PyloadHub {
         throw err;
       }
       return this.applyFailure(record, err);
+    }
+    if (record.epoch !== epoch) {
+      return false;
     }
     return this.applySuccess(record, snapshot);
   }
@@ -433,6 +453,10 @@ export class PyloadHub {
     }
     if (err.kind === ERROR_KINDS.AUTH) {
       record.failures = 0;
+      if (!record.down) {
+        record.down = true; // the states would otherwise freeze on the last reading
+        await this.publishStates(record);
+      }
       return wasError !== err.kind;
     }
     record.failures += 1;
@@ -465,8 +489,9 @@ export class PyloadHub {
 
   /** The end of the timed pause of a server, null when none. */
   pauseEnd(record) {
-    const entry = this.saved.pauses[String(record.server.slot)];
-    return entry && entry.key === identity(record.server) ? entry.until : null;
+    // Keyed on the slot (the device identity): a new address keeps the pause.
+    const until = this.saved.pauses[String(record.server.slot)]?.until;
+    return Number.isFinite(until) ? until : null;
   }
 
   setPauseEnd(record, until) {
@@ -479,7 +504,7 @@ export class PyloadHub {
       }
       delete this.saved.pauses[slot];
     } else {
-      this.saved.pauses[slot] = { key: identity(record.server), until };
+      this.saved.pauses[slot] = { until };
       this.armPause(record, until);
     }
     this.store.save(this.saved);
@@ -522,17 +547,18 @@ export class PyloadHub {
       }
       return false;
     }
-    this.setPauseEnd(record, null);
     try {
       await record.api.resume();
-      logger.info(`${this.label(record)}: end of the timed pause, downloads resumed`);
     } catch (err) {
       if (!err.kind) {
         throw err;
       }
+      // The end is kept: the next reading tries again.
       logger.warn(`${this.label(record)}: could not resume after the pause: ${err.message}`);
       return false;
     }
+    this.setPauseEnd(record, null);
+    logger.info(`${this.label(record)}: end of the timed pause, downloads resumed`);
     await this.read(record);
     return true;
   }
@@ -551,12 +577,17 @@ export class PyloadHub {
     const finished = snapshot.packages.filter((item) => item.finished);
     const state = {
       key,
-      finished: finished.map((item) => item.key).slice(0, MAX_SEEN),
-      failed: snapshot.failed.map((file) => file.key).slice(0, MAX_SEEN),
+      finished: finished.map((item) => item.key),
+      failed: snapshot.failed.map((file) => file.key),
       pending: snapshot.pendingCount > 0,
     };
     const entry = this.saved.seen[slot];
-    if (!entry || entry.key !== key) {
+    if (
+      !entry ||
+      entry.key !== key ||
+      !Array.isArray(entry.finished) ||
+      !Array.isArray(entry.failed)
+    ) {
       // The last completed package is not known yet: the newest finished one.
       const newest = finished.reduce(
         (best, item) => (!best || item.id > best.id ? item : best),
@@ -586,7 +617,7 @@ export class PyloadHub {
     for (const item of completed) {
       logger.debug(`${this.label(record)}: completed "${item.name}"`);
       await this.fire(TRIGGERS.COMPLETED, record, {
-        name: item.name,
+        name: eventText(item.name),
         files: item.files,
         size_mb: Math.round(item.bytes / MB),
       });
@@ -594,9 +625,9 @@ export class PyloadHub {
     for (const file of failed) {
       logger.debug(`${this.label(record)}: failed "${file.name}"`);
       await this.fire(TRIGGERS.FAILED, record, {
-        name: file.name,
-        package: file.packageName,
-        reason: file.reason,
+        name: eventText(file.name),
+        package: eventText(file.packageName),
+        reason: eventText(file.reason),
       });
     }
     if (emptied) {
@@ -675,8 +706,10 @@ export class PyloadHub {
       if (!created.has(externalId) || (record.snapshot === null && record.error === null)) {
         continue;
       }
-      const transport =
-        record.error === null ? DEVICE_TRANSPORTS.LOCAL : DEVICE_TRANSPORTS.UNREACHABLE;
+      if (record.error !== null && !failing(record)) {
+        continue;
+      }
+      const transport = failing(record) ? DEVICE_TRANSPORTS.UNREACHABLE : DEVICE_TRANSPORTS.LOCAL;
       if (this.transports.get(externalId) !== transport) {
         entries.push({ external_id: externalId, transport });
       }
@@ -704,13 +737,13 @@ export class PyloadHub {
         message: invalidSlots.length ? CONNECTION_TEXT.invalidUrl : CONNECTION_TEXT.noServer,
       };
     }
-    const failing = [...this.records.values()].filter((record) => record.error);
-    if (failing.length === 0 && invalidSlots.length === 0) {
+    const failingRecords = [...this.records.values()].filter(failing);
+    if (failingRecords.length === 0 && invalidSlots.length === 0) {
       return { connected: true };
     }
     const message = {};
     for (const language of Object.keys(CONNECTION_TEXT.noServer)) {
-      const parts = failing.map((record) =>
+      const parts = failingRecords.map((record) =>
         labelled(
           serverName(record.server),
           pick(ERROR_TEXT[record.error.kind], language),
@@ -722,7 +755,7 @@ export class PyloadHub {
       }
       message[language] = parts.join(' · ').slice(0, 200);
     }
-    return { connected: failing.length < this.records.size, message };
+    return { connected: failingRecords.length < this.records.size, message };
   }
 
   async publishConnectionStatus() {
@@ -752,7 +785,8 @@ export class PyloadHub {
       throw new Error(pick(ACTION_TEXT.noServer, language));
     }
     if (!deviceExternalId) {
-      return [...this.records.values()];
+      // Slot order: "the first server" is slot 1, even after a reconfiguration.
+      return [...this.records.values()].sort((a, b) => a.server.slot - b.server.slot);
     }
     const slot = slotOf(this.gladys, deviceExternalId);
     const record = slot === null ? null : this.records.get(slot);
@@ -775,7 +809,13 @@ export class PyloadHub {
     const results = await Promise.all(
       records.map(async (record) => {
         try {
-          await command(record);
+          // Before and after: a reading started during the command is stale too.
+          record.epoch += 1;
+          try {
+            await command(record);
+          } finally {
+            record.epoch += 1;
+          }
           logger.info(`${this.label(record)}: ${description}`);
           // A reading started before the command would publish the old state.
           await record.polling;

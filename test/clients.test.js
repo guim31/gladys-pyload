@@ -224,3 +224,25 @@ test('the free space is optional (the "status" permission), the rest is not', as
   pyload.denied.add('get_queue_data');
   await assert.rejects(client.read(), { kind: ERROR_KINDS.PERMISSION });
 });
+
+test('the snapshot of a real dev96 queue: completed packages, an offline link', () => {
+  const dev96 = (name) => fixtureJson(`0.5.0b3.dev96/${name}.json`);
+  const snapshot = toSnapshot({ status: dev96('status-idle'), queue: dev96('queue-data') });
+  assert.equal(snapshot.status, STATUSES.IDLE);
+  assert.deepEqual(
+    snapshot.packages.map((item) => [item.name, item.finished]),
+    [
+      ['Real test 2', false],
+      ['Good one', true],
+      ['Real test 2', false],
+      ['Good one', true],
+    ],
+  );
+  assert.deepEqual(
+    snapshot.failed.map((file) => [file.name, file.reason]),
+    [
+      ['gone.bin', 'offline'],
+      ['gone (1).bin', 'offline'],
+    ],
+  );
+});

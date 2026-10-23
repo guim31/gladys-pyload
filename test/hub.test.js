@@ -365,3 +365,76 @@ test('the rate limit of pyLoad is reported as such', async (t) => {
   const ack = await w.fake.action('test_connection', {});
   assert.match(ack.data.message.en, /too many requests/);
 });
+
+test('a reading in flight during a timed pause command does not cancel its end', async (t) => {
+  const w = await world(t);
+  // The reading answers "not paused" only after the pause was sent.
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const handle = w.pyload.handle.bind(w.pyload);
+  let first = true;
+  t.mock.method(w.pyload, 'handle', async (url, options) => {
+    if (first && url.endsWith('/api/status_server')) {
+      first = false;
+      const answer = await handle(url, options);
+      await gate;
+      return answer;
+    }
+    return handle(url, options);
+  });
+  const reading = w.hub.pollAll();
+  const pausing = w.fake.sceneAction('pause_downloads', { minutes: 30 });
+  await new Promise((resolve) => setImmediate(resolve));
+  release();
+  await Promise.all([reading, pausing]);
+  assert.equal(w.pyload.paused, true);
+  assert.equal(w.hub.pauseEnd(w.hub.records.get(1)), w.clock.now() + 30 * 60_000);
+  assert.equal(w.hub.records.get(1).snapshot.pauseEndsAt, w.clock.now() + 30 * 60_000);
+});
+
+test('a resume refused at the end of a timed pause is tried again at the next reading', async (t) => {
+  const w = await world(t);
+  await w.fake.sceneAction('pause_downloads', { minutes: 5 });
+  w.clock.advance(5 * 60_000);
+  w.pyload.denied.add('unpause_server');
+  await w.hub.pollAll();
+  assert.equal(w.pyload.paused, true);
+  w.pyload.denied.delete('unpause_server');
+  await w.hub.pollAll();
+  assert.equal(w.pyload.paused, false);
+});
+
+test('the first server is slot 1, even after slot 1 was reconfigured', async (t) => {
+  const w = await world(t, { config: { ...BOTH_CONFIG, allow_add_links: true } });
+  // Force a new connection on slot 1 (new credentials), re-inserting it last.
+  w.hub.records.get(1).signature = 'changed';
+  await w.hub.reconfigure(w.hub.config);
+  assert.deepEqual([...w.hub.records.keys()], [2, 1]);
+  await w.fake.sceneAction('add_links', { links: LINK });
+  assert.equal(w.pyload.queue.at(-1).links[0].url, LINK, 'added on slot 1');
+});
+
+test('a malformed state file does not block the start', async (t) => {
+  const { writeFileSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dataDir = mkdtempSync(join(tmpdir(), 'gladys-pyload-'));
+  writeFileSync(
+    join(dataDir, 'pyload-state.json'),
+    JSON.stringify({ seen: { 1: { key: PYLOAD_URL } }, pauses: { 1: 'x' } }),
+  );
+  const w = await world(t, { dataDir });
+  assert.deepEqual(w.fake.connectionStatus, { connected: true });
+  assert.deepEqual(w.fake.sceneEvents, []);
+});
+
+test('one failed reading (a blip) does not flip the badge nor the connection status', async (t) => {
+  const w = await world(t);
+  await createAll(w);
+  w.pyload.online = false;
+  await w.hub.pollAll();
+  assert.equal(w.fake.transports.at(-1).transport, 'local');
+  assert.deepEqual(w.fake.connectionStatus, { connected: true });
+});
