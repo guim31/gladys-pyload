@@ -1,0 +1,147 @@
+[
+  {
+    "pid": 1,
+    "name": "Small file",
+    "folder": "Small_file",
+    "site": "",
+    "password": "",
+    "dest": 1,
+    "order": 0,
+    "linksdone": 0,
+    "sizedone": 0,
+    "sizetotal": 0,
+    "linkstotal": null,
+    "links": [
+      {
+        "fid": 1,
+        "url": "http://files.lan/small.bin",
+        "name": "small (1).bin",
+        "plugin": "DefaultPlugin",
+        "size": 0,
+        "format_size": "0.00 Bit",
+        "status": 8,
+        "statusmsg": "failed",
+        "package_id": 1,
+        "error": "Refusing to download from Server-Side host ('files.lan' resolves to 198.51.100.3)",
+        "order": 0
+      }
+    ],
+    "fids": null
+  },
+  {
+    "pid": 2,
+    "name": "Missing file",
+    "folder": "Missing_file",
+    "site": "",
+    "password": "",
+    "dest": 1,
+    "order": 1,
+    "linksdone": 0,
+    "sizedone": 0,
+    "sizetotal": 0,
+    "linkstotal": null,
+    "links": [
+      {
+        "fid": 2,
+        "url": "http://files.lan/missing.bin",
+        "name": "missing (1).bin",
+        "plugin": "DefaultPlugin",
+        "size": 0,
+        "format_size": "0.00 Bit",
+        "status": 8,
+        "statusmsg": "failed",
+        "package_id": 2,
+        "error": "Refusing to download from Server-Side host ('files.lan' resolves to 198.51.100.3)",
+        "order": 0
+      }
+    ],
+    "fids": null
+  },
+  {
+    "pid": 3,
+    "name": "Small file",
+    "folder": "Small_file",
+    "site": "",
+    "password": "",
+    "dest": 1,
+    "order": 2,
+    "linksdone": 1,
+    "sizedone": 2097152,
+    "sizetotal": 2097152,
+    "linkstotal": null,
+    "links": [
+      {
+        "fid": 3,
+        "url": "http://downloads.example.com/small.bin",
+        "name": "small.bin",
+        "plugin": "DefaultPlugin",
+        "size": 2097152,
+        "format_size": "2.00 MiB",
+        "status": 0,
+        "statusmsg": "finished",
+        "package_id": 3,
+        "error": "",
+        "order": 0
+      }
+    ],
+    "fids": null
+  },
+  {
+    "pid": 4,
+    "name": "Missing file",
+    "folder": "Missing_file",
+    "site": "",
+    "password": "",
+    "dest": 1,
+    "order": 3,
+    "linksdone": 0,
+    "sizedone": 0,
+    "sizetotal": 335,
+    "linkstotal": null,
+    "links": [
+      {
+        "fid": 4,
+        "url": "http://downloads.example.com/missing.bin",
+        "name": "missing.bin",
+        "plugin": "DefaultPlugin",
+        "size": 335,
+        "format_size": "335.00 Byte",
+        "status": 1,
+        "statusmsg": "offline",
+        "package_id": 4,
+        "error": "offline",
+        "order": 0
+      }
+    ],
+    "fids": null
+  },
+  {
+    "pid": 5,
+    "name": "Big file",
+    "folder": "Big_file",
+    "site": "",
+    "password": "",
+    "dest": 1,
+    "order": 4,
+    "linksdone": 1,
+    "sizedone": 314572800,
+    "sizetotal": 314572800,
+    "linkstotal": null,
+    "links": [
+      {
+        "fid": 5,
+        "url": "http://downloads.example.com/big.bin",
+        "name": "big.bin",
+        "plugin": "DefaultPlugin",
+        "size": 314572800,
+        "format_size": "300.00 MiB",
+        "status": 0,
+        "statusmsg": "finished",
+        "package_id": 5,
+        "error": "",
+        "order": 0
+      }
+    ],
+    "fids": null
+  }
+]
