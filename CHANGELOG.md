@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-23
+
 ### Added
 
 - One Gladys device per pyLoad server (pyload-ng 0.5, up to two): downloads paused and automatic
@@ -25,3 +27,6 @@ the notes of the version's GitHub Release.
 - The "pyLoad downloads" dashboard widget: speed, queue, time left, one line per server, and
   Pause, Pause 30 min, Resume and Retry failed buttons.
 - A "Test the connection" button, and the documentation in English, French, German and Spanish.
+
+[Unreleased]: https://github.com/guim31/gladys-pyload/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/guim31/gladys-pyload/releases/tag/v1.0.0
